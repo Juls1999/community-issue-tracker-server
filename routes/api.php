@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\IssueCategoryController;
 use App\Http\Controllers\Api\IssueController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\IssueCommentController;
@@ -7,7 +8,7 @@ use App\Http\Controllers\Api\IssueAttachmentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->get('/user',[UserController::class, 'index']);
+Route::middleware('auth:sanctum')->get('/user', [UserController::class, 'index']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     // retrieves issues
@@ -39,6 +40,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/issues/{issue}/attachments', [IssueAttachmentController::class, 'store']);
 
     Route::get('/issues/{issue}/attachments/{attachment}/download', [IssueAttachmentController::class, 'download']);
+
+
+    Route::get('/issue-categories', [
+        IssueCategoryController::class,
+        'index',
+    ]);
 
 
 });

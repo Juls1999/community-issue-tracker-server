@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Issue;
 use App\Models\IssueAttachment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class IssueAttachmentController extends Controller
@@ -22,12 +23,14 @@ class IssueAttachmentController extends Controller
         );
     }
 
+
     public function store(Request $request, Issue $issue)
     {
         $this->authorize('view', $issue);
 
         $validated = $request->validate([
-            'image' => [
+            'images' => ['required', 'array', 'min:1'],
+            'images.*' => [
                 'required',
                 'file',
                 'image',
@@ -36,31 +39,46 @@ class IssueAttachmentController extends Controller
             ],
         ]);
 
-        $file = $validated['image'];
-
-        $path = $file->store('issue-attachments', 'local');
+        $disk = Storage::disk('local');
+        $paths = [];
 
         try {
-            $attachment = $issue->attachments()->create([
-                'uploaded_by' => $request->user()->id,
-                'file_path' => $path,
-                'original_name' => $file->getClientOriginalName(),
-                'mime_type' => $file->getMimeType(),
-                'file_size' => $file->getSize(),
-            ]);
+            $attachments = DB::transaction(function () use ($validated, $request, $issue, $disk, &$paths) {
+                $attachments = [];
+
+                foreach ($validated['images'] as $file) {
+                    $path = $file->store('issue-attachments', 'local');
+                    $paths[] = $path;
+
+                    $attachments[] = $issue->attachments()->create([
+                        'uploaded_by' => $request->user()->id,
+                        'file_path' => $path,
+                        'original_name' => $file->getClientOriginalName(),
+                        'mime_type' => $file->getMimeType(),
+                        'file_size' => $file->getSize(),
+                    ]);
+                }
+
+                return $attachments;
+            });
         } catch (\Throwable $exception) {
-            Storage::disk('local')->delete($path);
+            foreach ($paths as $path) {
+                $disk->delete($path);
+            }
 
             throw $exception;
         }
 
-        $attachment->load('uploader:id,name');
+        foreach ($attachments as $attachment) {
+            $attachment->load('uploader:id,name');
+        }
 
         return response()->json([
-            'message' => 'Photo uploaded successfully.',
-            'data' => $attachment,
+            'message' => 'Photos uploaded successfully.',
+            'data' => $attachments,
         ], 201);
     }
+
 
     public function download(
         Issue $issue,
