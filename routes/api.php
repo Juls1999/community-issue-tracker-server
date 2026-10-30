@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\BarangayController;
 use App\Http\Controllers\Api\IssueCategoryController;
 use App\Http\Controllers\Api\IssueController;
 use App\Http\Controllers\Api\UserController;
@@ -10,6 +11,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->get('/user', [UserController::class, 'index']);
 
+// PUBLIC API
+Route::get('/barangays', [BarangayController::class, 'index']);
+
+// PRIVATE API
 Route::middleware(['auth:sanctum'])->group(function () {
     // retrieves issues
     Route::get('/issues', [IssueController::class, 'index']);
@@ -46,6 +51,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         IssueCategoryController::class,
         'index',
     ]);
+
 
 
 });
