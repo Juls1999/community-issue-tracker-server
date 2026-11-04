@@ -23,12 +23,12 @@ class IssueController extends Controller
         $user = $request->user();
         $role = $user->role?->name;
 
-        $query = Issue::query()
-            ->with(['user', 'assignee', 'category', 'barangay'])
-            ->latest();
+        // Base query with role-based access control
+        $query = Issue::query();
 
         if ($role === 'resident') {
             $query->where('user_id', $user->id);
+
         } elseif ($role === 'staff') {
             $query->where(function ($query) use ($user) {
                 $query->where('assigned_to', $user->id);
@@ -40,13 +40,44 @@ class IssueController extends Controller
                     });
                 }
             });
+
         } elseif ($role !== 'admin') {
             abort(403, 'You are not authorized to view issues.');
         }
 
-        return IssueResource::collection(
-            $query->paginate(10)
-        );
+        // Statistics across ALL accessible issues
+        $statistics = (clone $query)->getStatistics();
+
+        // Apply search filter
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('uuid', 'like', "%{$search}%")
+                    ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                        $categoryQuery->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Apply status filter
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        // Paginate results
+        $issues = $query
+            ->with(['category', 'barangay'])
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        return IssueResource::collection($issues)
+            ->additional([
+                'statistics' => $statistics,
+            ]);
     }
 
     public function store(Request $request)
