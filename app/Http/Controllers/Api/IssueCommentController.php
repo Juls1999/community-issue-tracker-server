@@ -38,9 +38,6 @@ class IssueCommentController extends Controller
 
         $comment->load('user:id,name');
 
-        return response()->json([
-            'message' => 'Comment added successfully.',
-            'data' => $comment,
-        ], 201);
+        return response()->noContent(201);
     }
 }

@@ -23,19 +23,64 @@ class IssueController extends Controller
         $user = $request->user();
         $role = $user->role?->name;
 
-        // Base query with role-based access control
+        // 1. Validate query parameters
+        $validated = $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
+
+            'status' => [
+                'sometimes',
+                Rule::in(['all', 'pending', 'in_progress', 'resolved']),
+            ],
+
+            'priority' => [
+                'sometimes',
+                Rule::in(['all', 'low', 'medium', 'high', 'urgent']),
+            ],
+
+            'category' => [
+                'sometimes',
+                'integer',
+                'min:1',
+                'exists:issue_categories,id',
+            ],
+
+            'sort_by' => [
+                'sometimes',
+                Rule::in([
+                    'created_at',
+                    'updated_at',
+                    'title',
+                    'priority',
+                    'status',
+                ]),
+            ],
+
+            'sort_direction' => [
+                'sometimes',
+                Rule::in(['asc', 'desc']),
+            ],
+        ]);
+
+        // 2. Pagination and sorting defaults
+        $perPage = (int) ($validated['per_page'] ?? 10);
+        $sortBy = $validated['sort_by'] ?? 'created_at';
+        $sortDirection = $validated['sort_direction'] ?? 'desc';
+
+        // 3. Base query with role-based access control
         $query = Issue::query();
 
         if ($role === 'resident') {
             $query->where('user_id', $user->id);
 
         } elseif ($role === 'staff') {
-            $query->where(function ($query) use ($user) {
-                $query->where('assigned_to', $user->id);
+            $query->where(function ($q) use ($user) {
+                $q->where('assigned_to', $user->id);
 
                 if ($user->barangay_id !== null) {
-                    $query->orWhere(function ($query) use ($user) {
-                        $query->whereNull('assigned_to')
+                    $q->orWhere(function ($subQuery) use ($user) {
+                        $subQuery->whereNull('assigned_to')
                             ->where('barangay_id', $user->barangay_id);
                     });
                 }
@@ -45,12 +90,12 @@ class IssueController extends Controller
             abort(403, 'You are not authorized to view issues.');
         }
 
-        // Statistics across ALL accessible issues
+        // 4. Statistics across ALL accessible issues
         $statistics = (clone $query)->getStatistics();
 
-        // Apply search filter
-        if ($request->filled('search')) {
-            $search = $request->input('search');
+        // 5. Search filter
+        if (!empty($validated['search'])) {
+            $search = trim($validated['search']);
 
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
@@ -62,16 +107,39 @@ class IssueController extends Controller
             });
         }
 
-        // Apply status filter
-        if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
+        // 6. Status filter
+        if (
+            isset($validated['status']) &&
+            $validated['status'] !== 'all'
+        ) {
+            $query->where('status', $validated['status']);
         }
 
-        // Paginate results
+        // 7. Priority filter
+        if (
+            isset($validated['priority']) &&
+            $validated['priority'] !== 'all'
+        ) {
+            $query->where('priority', $validated['priority']);
+        }
+
+        // 8. Category filter
+        if (isset($validated['category'])) {
+            $query->where('issue_category_id', $validated['category']);
+        }
+
+        // 9. Sorting
+        $query->orderBy($sortBy, $sortDirection);
+
+        // Consistent ordering when multiple records share the same value
+        if ($sortBy !== 'id') {
+            $query->orderBy('id', 'desc');
+        }
+
+        // 10. Pagination
         $issues = $query
             ->with(['category', 'barangay'])
-            ->latest()
-            ->paginate(10)
+            ->paginate($perPage)
             ->withQueryString();
 
         return IssueResource::collection($issues)
@@ -191,7 +259,7 @@ class IssueController extends Controller
 
         $issue->load(['user', 'assignee', 'category', 'barangay']);
 
-        return new IssueResource($issue);
+        return response()->noContent();
     }
 
 

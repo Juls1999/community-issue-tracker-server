@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\BarangayController;
 use App\Http\Controllers\Api\IssueCategoryController;
 use App\Http\Controllers\Api\IssueController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\IssueCommentController;
 use App\Http\Controllers\Api\IssueAttachmentController;
@@ -50,6 +51,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/issue-categories', [
         IssueCategoryController::class,
         'index',
+    ]);
+
+
+    // PROFILE
+    Route::patch('/user', [ProfileController::class, 'update']);
+
+    Route::put('/user/password', [
+        ProfileController::class,
+        'updatePassword',
     ]);
 
 

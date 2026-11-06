@@ -11,8 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
-#[Fillable(['name', 'email', 'password', 'barangay_id'])]
+
+#[Fillable(['first_name', 'middle_name', 'last_name', 'phone_number', 'email', 'password', 'barangay_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -50,5 +52,24 @@ class User extends Authenticatable
     public function assignedIssues(): HasMany
     {
         return $this->hasMany(Issue::class, 'assigned_to');
+    }
+
+
+    protected function fullName(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => collect([
+                $this->first_name,
+                $this->middle_name,
+                $this->last_name,
+            ])->filter()->implode(' ')
+        );
+    }
+
+    protected function isVerified(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->email_verified_at !== null
+        );
     }
 }

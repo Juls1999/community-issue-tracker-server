@@ -24,9 +24,12 @@ class RegisteredUserController extends Controller
     public function store(Request $request): Response
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'phone_number' => ['sometimes', 'nullable', 'string', 'max:255', 'unique:' . User::class],
+            'password' => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->numbers(),],
             'barangay_id' => ['required', 'integer', 'exists:barangays,id'],
         ]);
 
@@ -35,7 +38,10 @@ class RegisteredUserController extends Controller
         $user = DB::transaction(function () use ($validated, $residentRole) {
             $user = new User();
 
-            $user->name = $validated['name'];
+            $user->first_name = $validated['first_name'];
+            $user->middle_name = $validated['middle_name'];
+            $user->last_name = $validated['last_name'];
+            $user->phone_number = $validated['phone_number'];
             $user->email = $validated['email'];
             $user->password = Hash::make($validated['password']);
             $user->barangay_id = $validated['barangay_id'];

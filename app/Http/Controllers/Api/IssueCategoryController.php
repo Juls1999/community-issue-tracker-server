@@ -9,11 +9,11 @@ class IssueCategoryController extends Controller
 {
     public function index()
     {
-        return response()->json([
-            'data' => IssueCategory::query()
+        return response()->json(
+            IssueCategory::query()
                 ->where('is_active', true)
                 ->orderBy('name')
-                ->get(['id', 'name', 'description']),
-        ]);
+                ->get(['id', 'name', 'description'])
+        );
     }
 }

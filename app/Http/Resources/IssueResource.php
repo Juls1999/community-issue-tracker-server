@@ -17,7 +17,7 @@ class IssueResource extends JsonResource
             'priority' => $this->priority,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
-            'resolved_at' => $this->resolved_at,
+            'resolvedAt' => $this->resolved_at,
 
             'reporter' => $this->whenLoaded('user', fn() => [
                 'id' => $this->user->id,
@@ -51,8 +51,8 @@ class IssueResource extends JsonResource
                     ] : null
             ),
 
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'createdAt' => $this->created_at,
+            'updatedAt' => $this->updated_at,
         ];
     }
 }
