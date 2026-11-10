@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\IssueCommentController;
 use App\Http\Controllers\Api\IssueAttachmentController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -61,6 +62,22 @@ Route::middleware(['auth:sanctum'])->group(function () {
         ProfileController::class,
         'updatePassword',
     ]);
+
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index']);
+
+    Route::patch(
+        '/notifications/{notification}/read',
+        [NotificationController::class, 'markAsRead']
+    );
+
+    Route::patch(
+        '/notifications/read-all',
+        [NotificationController::class, 'markAllAsRead']
+    );
+
+    Route::delete('/notifications/{notifications}', [NotificationController::class, 'destroy']);
+    Route::delete('/notifications/read', [NotificationController::class, 'destroyRead']);
 
 
 

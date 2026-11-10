@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\IssueResource;
 use App\Models\Issue;
+use App\Notifications\IssueStatusUpdated;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -346,13 +347,22 @@ class IssueController extends Controller
 
         DB::transaction(function () use ($issue, $next) {
             $issue->status = $next;
+
             $issue->resolved_at = $next === 'resolved'
                 ? ($issue->resolved_at ?? now())
                 : null;
+
             $issue->save();
         });
 
         $issue->load(['user', 'assignee', 'category', 'barangay']);
+
+        // Notify the resident only when the status actually changes.
+        if ($current !== $next && $issue->user) {
+            $issue->user->notify(
+                new IssueStatusUpdated($issue, $current)
+            );
+        }
 
         return new IssueResource($issue);
     }
