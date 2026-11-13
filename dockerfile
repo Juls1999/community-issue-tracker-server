@@ -49,7 +49,9 @@ RUN composer install \
     --no-dev \
     --no-interaction \
     --prefer-dist \
-    --optimize-autoloader
+    --optimize-autoloader \
+    --no-progress \
+    -vvv
 
 # Create persistent SQLite directory
 RUN mkdir -p /var/data \
@@ -59,4 +61,4 @@ RUN mkdir -p /var/data \
 EXPOSE 10000
 
 # Initialize SQLite and run migrations
-CMD ["bash", "-lc", "touch /var/data/database.sqlite && chown www-data:www-data /var/data/database.sqlite && chmod 664 /var/data/database.sqlite && php artisan migrate --force && exec apache2-foreground"]
+CMD ["bash", "-lc", "mkdir -p database && touch database/database.sqlite && php artisan migrate --force && exec apache2-foreground"]
