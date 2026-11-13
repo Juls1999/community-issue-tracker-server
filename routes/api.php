@@ -13,6 +13,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->get('/user', [UserController::class, 'index']);
+Route::get('/test', function () {
+    return 'hello world';
+});
 
 // PUBLIC API
 Route::get('/barangays', [BarangayController::class, 'index']);
@@ -95,7 +98,7 @@ Route::middleware([
     'role:admin',
 ])->group(function () {
     // Administrator-only endpoints
-    Route::get('/test', [IssueController::class, 'index']);
+
 });
 
 Route::middleware([
