@@ -55,10 +55,16 @@ RUN composer install \
 
 # Create persistent SQLite directory
 RUN mkdir -p /var/data \
-    && chown -R www-data:www-data storage bootstrap/cache /var/data \
-    && chmod -R 775 storage bootstrap/cache /var/data
+    && chown -R www-data:www-data \
+    storage \
+    bootstrap/cache \
+    database \
+    && chmod -R 775 \
+    storage \
+    bootstrap/cache \
+    database /var/data
 
 EXPOSE 10000
 
 # Initialize SQLite and run migrations
-CMD ["bash", "-lc", "mkdir -p database && touch database/database.sqlite && php artisan migrate --force && exec apache2-foreground"]
+CMD ["bash", "-lc", "mkdir -p database && touch database/database.sqlite && chown -R www-data:www-data database storage bootstrap/cache && chmod -R 775 database storage bootstrap/cache && php artisan migrate --force && exec apache2-foreground"]
