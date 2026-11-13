@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\BarangayController;
 use App\Http\Controllers\Api\IssueCategoryController;
 use App\Http\Controllers\Api\IssueController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\StaffDashboardController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\IssueCommentController;
 use App\Http\Controllers\Api\IssueAttachmentController;
@@ -79,6 +80,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/notifications/{notifications}', [NotificationController::class, 'destroy']);
     Route::delete('/notifications/read', [NotificationController::class, 'destroyRead']);
 
+
+    // STAFF
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/staff/dashboard', [StaffDashboardController::class, 'index']);
+    });
 
 
 });

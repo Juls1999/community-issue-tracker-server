@@ -18,18 +18,27 @@ class CreateStaffUser extends Command
 
     public function handle(): int
     {
-        $name = $this->ask('Staff name');
+        $first_name = $this->ask('Staff first name');
+        $middle_name = $this->ask('Staff middle name');
+        $last_name = $this->ask('Staff last name');
+        $phone_number = $this->ask('staff phone number');
         $email = $this->ask('Staff email');
         $barangayId = $this->ask('Barangay ID');
         $password = $this->secret('Staff password');
 
         $validator = Validator::make([
-            'name' => $name,
+            'first_name' => $first_name,
+            'middle_name' => $middle_name,
+            'last_name' => $last_name,
+            'phone_number' => $phone_number,
             'email' => $email,
             'barangay_id' => $barangayId,
             'password' => $password,
         ], [
-            'name' => ['required', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['sometimes', 'string', 'max:255', 'nullable'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'phone_number' => ['sometimes', 'string', 'max:255', 'nullable'],
             'email' => [
                 'required',
                 'email',
@@ -65,7 +74,10 @@ class CreateStaffUser extends Command
         $barangay = Barangay::find($barangayId);
 
         $user = new User();
-        $user->name = $name;
+        $user->first_name = $first_name;
+        $user->middle_name = $middle_name;
+        $user->last_name = $last_name;
+        $user->phone_number = $phone_number;
         $user->email = $email;
         $user->password = Hash::make($password);
         $user->barangay()->associate($barangay);

@@ -21,7 +21,7 @@ class IssueResource extends JsonResource
 
             'reporter' => $this->whenLoaded('user', fn() => [
                 'id' => $this->user->id,
-                'name' => $this->user->name,
+                'fullName' => $this->user->fullName,
             ]),
 
             'assignee' => $this->whenLoaded(
@@ -29,7 +29,7 @@ class IssueResource extends JsonResource
                 fn() =>
                     $this->assignee ? [
                         'id' => $this->assignee->id,
-                        'name' => $this->assignee->name,
+                        'fullName' => $this->assignee->fullName,
                     ] : null
             ),
 

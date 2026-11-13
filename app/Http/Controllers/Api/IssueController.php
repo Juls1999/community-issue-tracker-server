@@ -42,6 +42,7 @@ class IssueController extends Controller
 
             'category' => [
                 'sometimes',
+                'nullable',
                 'integer',
                 'min:1',
                 'exists:issue_categories,id',
@@ -139,7 +140,7 @@ class IssueController extends Controller
 
         // 10. Pagination
         $issues = $query
-            ->with(['category', 'barangay'])
+            ->with(['category', 'barangay', 'assignee', 'user'])
             ->paginate($perPage)
             ->withQueryString();
 
@@ -264,48 +265,109 @@ class IssueController extends Controller
     }
 
 
-    public function assign(Request $request, Issue $issue)
+    function assign(Request $request, Issue $issue)
     {
-        $this->authorize('assign', $issue);
+        $user = $request->user()->loadMissing('role');
+        $role = $user->role?->name;
 
-        $validated = $request->validate([
-            'assigned_to' => [
-                'required',
-                'integer',
-                'exists:users,id',
-            ],
-        ]);
-
-        $staff = User::with('role')->findOrFail(
-            $validated['assigned_to']
+        // Only staff and admins can assign issues.
+        abort_unless(
+            in_array($role, ['staff', 'admin'], true),
+            403,
+            'You are not authorized to assign issues.'
         );
 
-        if ($staff->role?->name !== 'staff') {
-            throw ValidationException::withMessages([
+        // Admins must provide the staff member to assign.
+        $validated = [];
+
+        if ($role === 'admin') {
+            $this->authorize('assign', $issue);
+
+            $validated = $request->validate([
                 'assigned_to' => [
-                    'The selected user must have the staff role.',
+                    'required',
+                    'integer',
+                    'exists:users,id',
                 ],
             ]);
         }
 
-        if (
-            $issue->barangay_id !== null
-            && $staff->barangay_id !== $issue->barangay_id
-        ) {
-            throw ValidationException::withMessages([
-                'assigned_to' => [
-                    'Staff must belong to the issue barangay.',
-                ],
-            ]);
-        }
+        $assignedIssue = DB::transaction(function () use ($user, $role, $validated, $issue) {
+            // Lock the issue to prevent simultaneous claims.
+            $lockedIssue = Issue::whereKey($issue->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $issue->update([
-            'assigned_to' => $staff->id,
+            // Only pending, unassigned issues can be claimed or assigned.
+            if (
+                $lockedIssue->status !== 'pending'
+                || $lockedIssue->assigned_to !== null
+            ) {
+                throw ValidationException::withMessages([
+                    'issue' => [
+                        'This issue is no longer available for assignment.',
+                    ],
+                ]);
+            }
+
+            // Staff can only claim issues in their own barangay.
+            if ($role === 'staff') {
+                if (
+                    $user->barangay_id === null
+                    || $lockedIssue->barangay_id !== $user->barangay_id
+                ) {
+                    throw ValidationException::withMessages([
+                        'issue' => [
+                            'You can only claim issues within your barangay.',
+                        ],
+                    ]);
+                }
+
+                $staffId = $user->id;
+            } else {
+                // Admin can assign only staff members.
+                $staff = User::with('role')->findOrFail(
+                    $validated['assigned_to']
+                );
+
+                if ($staff->role?->name !== 'staff') {
+                    throw ValidationException::withMessages([
+                        'assigned_to' => [
+                            'The selected user must have the staff role.',
+                        ],
+                    ]);
+                }
+
+                // The selected staff member must belong to the issue's barangay.
+                if (
+                    $lockedIssue->barangay_id === null
+                    || $staff->barangay_id !== $lockedIssue->barangay_id
+                ) {
+                    throw ValidationException::withMessages([
+                        'assigned_to' => [
+                            'Staff must belong to the issue barangay.',
+                        ],
+                    ]);
+                }
+
+                $staffId = $staff->id;
+            }
+
+            $lockedIssue->update([
+                'assigned_to' => $staffId,
+            ]);
+
+            return $lockedIssue;
+        });
+
+        $assignedIssue->load([
+            'user',
+            'assignee',
+            'category',
+            'barangay',
         ]);
 
-        $issue->load(['user', 'assignee', 'category', 'barangay']);
-
-        return new IssueResource($issue);
+        return new IssueResource($assignedIssue);
     }
 
 
